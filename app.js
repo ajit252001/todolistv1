@@ -31,7 +31,12 @@ async function run() {
       name: "Learn to code",
     });
  
-    var defaultItems = [item1, item2, item3];
+    const defaultItems = [item1, item2, item3];
+    const listSchema = {
+      name:String,
+      items: [itemsSchema]
+    };
+    const List =mongoose.model("List", listSchema);
  
     // mongoose.connection.close();
  
@@ -50,14 +55,25 @@ async function run() {
     app.post("/", function(req, res){
  
       const itemName = req.body.newItem;
+      const listName = req.body.list;
+      const day = date.getDate();
      
       const item = new Item({
         name: itemName
       });
      
-      item.save();
+      if(listName === day){
+        item.save();
      
-      res.redirect("/");
+        res.redirect("/");
+      }
+      else{
+        List.findOne({name : listName}).then(function(foundList){
+          foundList.items.push(item);
+          foundList.save();
+          res.redirect("/" + listName);
+        })
+      }
      
     });
  // delete route 
@@ -70,9 +86,29 @@ async function run() {
   res.redirect("/");
   }
 });
-    //
-    app.get("/work", function (req, res) {
-      res.render("list", { listTitle: "Work List", newListItems: workItems });
+    // customlist names
+    app.get("/:customListName", function (req, res) {
+      const customListName = req.params.customListName;
+     
+      List.findOne({ name: customListName })
+        .then(function (foundList) {
+          if (!foundList) {
+            const list = new List({
+              name: customListName,
+              items: defaultItems,
+            });
+            list.save();
+            res.redirect("/" + customListName);
+          } else {
+            res.render("list", {
+              listTitle: foundList.name,
+              newListItems: foundList.items,
+            });
+          }
+        })
+        .catch(function (err) {
+          console.log(err);
+        });
     });
  
     app.get("/about", function (req, res) {
